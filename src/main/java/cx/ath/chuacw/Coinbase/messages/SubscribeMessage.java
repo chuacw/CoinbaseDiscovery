@@ -5,39 +5,39 @@ import java.util.Arrays;
 
 public class SubscribeMessage extends Message {
 
-    private boolean defaultTicker;
-
-    private ArrayList<Object> channels;
+    private final ArrayList<Object> mChannels;
+    private boolean mDefaultTicker;
 
     public SubscribeMessage() {
-        this.channels = new ArrayList<Object>();
-        defaultTicker = true;
+        super();
+        this.mChannels = new ArrayList<Object>();
+        this.mDefaultTicker = true;
         setType("subscribe");
     }
 
     public void addChannels(Object[] objects) {
-        for(Object object: objects) {
-            this.channels.add(object);
+        for (Object object : objects) {
+            this.mChannels.add(object);
         }
     }
 
     public void addTicker(MessageTicker ticker) {
-        defaultTicker = false;
-        this.channels.add(ticker);
+        this.mDefaultTicker = false;
+        this.mChannels.add(ticker);
     }
 
     public Object[] getChannels() {
-        final Object[] tempObj = this.channels.toArray();
+        final Object[] tempObj = this.mChannels.toArray();
         Object[] result = null;
 
-        if (defaultTicker) {
-            ArrayList<Object> newObj = new ArrayList<Object>(Arrays.asList(tempObj));
-            MessageTicker ticker = new MessageTicker();
+        if (mDefaultTicker) {
+            final ArrayList<Object> newObj = new ArrayList<Object>(Arrays.asList(tempObj));
+            final MessageTicker ticker = new MessageTicker();
             ticker.setProductIds(getProductIds());
             newObj.add(ticker);
             result = newObj.toArray();
         } else {
-            result = this.channels.toArray();
+            result = this.mChannels.toArray();
         }
         return result;
     }

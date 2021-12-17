@@ -7,7 +7,7 @@ public class Constants {
     public static final String L2UPDATE = "l2update";
     public static final String SNAPSHOT = "snapshot";
     public static final String SUBSCRIPTIONS = "subscriptions";
-    public static final String TICKER =  "ticker";
+    public static final String TICKER = "ticker";
 
     // For comparing to order book
     public static final String BUY = "buy";

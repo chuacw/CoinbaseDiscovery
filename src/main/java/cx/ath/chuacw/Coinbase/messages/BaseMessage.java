@@ -5,21 +5,21 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.ArrayList;
 
 public class BaseMessage {
-    private ArrayList<String> productIds;
+    private final ArrayList<String> productIds;
 
     public BaseMessage() {
-        this.productIds = new ArrayList<String>();
+        this.productIds = new ArrayList<>();
     }
 
     @JsonProperty("product_ids")
     public String[] getProductIds() {
-        String[] result = this.productIds.toArray(new String[0]);
+        final String[] result = this.productIds.toArray(new String[0]);
         return result;
     }
 
     @JsonProperty("product_ids")
     public void setProductIds(String[] newProductIds) {
-        for(String productId: newProductIds) {
+        for (final String productId : newProductIds) {
             this.productIds.add(productId);
         }
     }

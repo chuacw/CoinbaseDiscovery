@@ -1,8 +1,18 @@
 package cx.ath.chuacw;
 
-public enum StopReason {
-    NORMAL,
-    CTRL_C,
-    ERROR,
-    UNSET
+public class StopReason {
+    private StopEnum mStop;
+
+    public StopReason(StopEnum value) {
+        super();
+        setStop(value);
+    }
+
+    public StopEnum getStop() {
+        return mStop;
+    }
+
+    public void setStop(StopEnum value) {
+        mStop = value;
+    }
 }

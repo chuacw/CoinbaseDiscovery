@@ -4,6 +4,7 @@ public class MessageTicker extends BaseMessage {
     private String name;
 
     public MessageTicker() {
+        super();
         this.name = "ticker";
     }
 

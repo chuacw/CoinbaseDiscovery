@@ -1,4 +1,4 @@
-package cx.ath.chuacw.WebSocket;
+package cx.ath.chuacw.Utility;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -7,11 +7,10 @@ import cx.ath.chuacw.Coinbase.WebSocketClientHandler;
 
 import java.net.URI;
 import java.net.http.HttpClient;
-import java.net.http.WebSocket;
 
-public class Utils {
-    public static WebSocket getWebSocket(String url, MessageHandler handler) {
-        final WebSocket result = HttpClient.newHttpClient().newWebSocketBuilder().buildAsync(URI.create(url),
+public class WebSocket {
+    public static java.net.http.WebSocket getWebSocket(String url, MessageHandler handler) {
+        final java.net.http.WebSocket result = HttpClient.newHttpClient().newWebSocketBuilder().buildAsync(URI.create(url),
                 new WebSocketClientHandler(handler)).join();
         return result;
     }
@@ -25,5 +24,4 @@ public class Utils {
         }
         return result;
     }
-
 }

@@ -4,6 +4,7 @@ public class Message extends BaseMessage {
     private String type;
 
     public Message() {
+        super();
     }
 
     public String getType() {

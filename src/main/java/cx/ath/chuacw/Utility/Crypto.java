@@ -1,9 +1,9 @@
-package cx.ath.chuacw.CryptoUtils;
+package cx.ath.chuacw.Utility;
 
 import javax.crypto.Mac;
 import java.security.NoSuchAlgorithmException;
 
-public class HMAC {
+public class Crypto {
 
     public static Mac getMac() {
         Mac result = null;
@@ -13,6 +13,6 @@ public class HMAC {
             nsaEx.printStackTrace();
         }
         return result;
-    };
+    }
 
 }

@@ -8,31 +8,89 @@ import cx.ath.chuacw.Coinbase.messages.responses.*;
 
 import java.math.BigDecimal;
 import java.net.http.WebSocket;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class WebSocketClientHandler implements WebSocket.Listener {
 
-    private StringBuffer bufferedData;
-    private final MessageHandler msgHandler;
-    private final Map<String, String> sellOrderBook;
-    private final Map<String, String> buyOrderBook;
-    private void initBuffer() {
-        bufferedData = new StringBuffer();
-    }
+    private final MessageHandler mMsgHandler;
+    private final Map<String, String> mSellOrderBook;
+    private final Map<String, String> mBuyOrderBook;
+    private StringBuffer mBufferedData;
+
     public WebSocketClientHandler(MessageHandler newHandler) {
         initBuffer();
-        msgHandler = newHandler;
-        sellOrderBook = new ConcurrentHashMap<>();
-        buyOrderBook = new ConcurrentHashMap<>();
+        this.mMsgHandler = newHandler;
+        this.mSellOrderBook = new ConcurrentHashMap<>();
+        this.mBuyOrderBook = new ConcurrentHashMap<>();
+    }
+
+    private static void addOrderLine(Map<String, String> orderBook, String header, StringBuilder sb, int limit) {
+        final String headerLine = String.format("%s\n", header);
+        sb.append(headerLine);
+        int nCount = 0;
+        final var sl = new ArrayList<String>();
+        for (final String price : orderBook.keySet()) {
+            if (nCount++ >= limit) {
+                break;
+            }
+            final String size = orderBook.get(price);
+            final String orderLine = String.format("Price %s, Size: %s\n", price, size);
+            sl.add(orderLine);
+        }
+        Collections.sort(sl);
+        nCount = 0;
+        for (final String orderLine : sl) {
+            if (nCount++ >= limit) {
+                break;
+            }
+            sb.append(orderLine);
+        }
+    }
+
+    private static void addOrderBookItems(List<List<String>> listOfList,
+                                          Map<String, String> orderBook, int Limit) {
+        int nCount = 0;
+        for (final List<String> list : listOfList) {
+            if (nCount++ >= Limit) {
+                break;
+            }
+            final String price = list.get(0);
+            final String size = list.get(1);
+            orderBook.put(price, size);
+        }
+    }
+
+    private void initBuffer() {
+        mBufferedData = new StringBuffer();
     }
 
     @Override
     public void onOpen(WebSocket webSocket) {
         WebSocket.Listener.super.onOpen(webSocket);
+        if (mMsgHandler != null) {
+            try {
+                mMsgHandler.opened();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    @Override
+    public CompletionStage<?> onClose(WebSocket webSocket, int statusCode, String reason) {
+        if (mMsgHandler != null) {
+            try {
+                mMsgHandler.closed();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        return WebSocket.Listener.super.onClose(webSocket, statusCode, reason);
     }
 
     @Override
@@ -41,56 +99,46 @@ public class WebSocketClientHandler implements WebSocket.Listener {
     }
 
     private void handle(ErrorMessage msg) throws InterruptedException {
-        if (msgHandler!=null) {
-            msgHandler.terminateApp(msg.reason);
+        if (mMsgHandler != null) {
+            mMsgHandler.terminateApp(msg.reason);
         }
     }
-    private void handle(HeartbeatMessage msg) {}
 
-    private static void addOrderLine(Map<String, String> orderBook, String header, StringBuffer sb, int limit) {
-        String headerLine = String.format("%s\n", header);
-        sb.append(headerLine);
-        int nCount = 0;
-        for (String price: orderBook.keySet()) {
-            if (nCount == limit) {
-                continue;
-            }
-            final String size = orderBook.get(price);
-            String orderLine = String.format("Price: %s, Size: %s\n", price, size);
-            sb.append(orderLine);
-            nCount++;
-        }
+    private void handle(HeartbeatMessage msg) {
     }
 
     private void handle(SnapshotMessage msg) {
-        addOrderBookItems(msg.asks.listIterator(), sellOrderBook, Constants.displayLEVELS);
-        addOrderBookItems(msg.bids.listIterator(), buyOrderBook, Constants.displayLEVELS);
+        addOrderBookItems(msg.asks, mSellOrderBook, Constants.displayLEVELS);
+        addOrderBookItems(msg.bids, mBuyOrderBook, Constants.displayLEVELS);
     }
 
     private void handle(SubscriptionsMessage msg) {
-        if (msgHandler != null) {
+        if (mMsgHandler != null) {
             try {
-                msgHandler.Subscribed(msg);
+                mMsgHandler.Subscribed(msg);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
         }
     }
+
     private void handleBuffering() {
-        if (msgHandler != null) {
+        if (mMsgHandler != null) {
             try {
-                msgHandler.handleBuffering();
+                mMsgHandler.handleBuffering();
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
         }
     }
+
     private void handle(TickerMessage msg) {
     }
+
     private void handleUnhandledType(String type, String json) {
-        if (msgHandler != null) {
+        if (mMsgHandler != null) {
             try {
-                msgHandler.unhandledType(type, json);
+                mMsgHandler.unhandledType(type, json);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -105,56 +153,41 @@ public class WebSocketClientHandler implements WebSocket.Listener {
         final List<String> changeList = msg.changes.get(0);
         final String orderType = changeList.get(0);
         final String price = changeList.get(1);
-        String size = changeList.get(2);
+        final String size = changeList.get(2);
         final BigDecimal nSize = new BigDecimal(size);
-        final BigDecimal Zero = new BigDecimal(0);
-        if (nSize.compareTo(Zero) == 0) {
+        if (nSize.compareTo(BigDecimal.ZERO) == 0) {
             switch (orderType) {
-                case Constants.BUY -> buyOrderBook.remove(price);
-                case Constants.SELL -> sellOrderBook.remove(price);
+                case Constants.BUY -> mBuyOrderBook.remove(price);
+                case Constants.SELL -> mSellOrderBook.remove(price);
             }
         } else {
             switch (orderType) {
-                case Constants.BUY -> buyOrderBook.put(price, size);
-                case Constants.SELL -> sellOrderBook.put(price, size);
+                case Constants.BUY -> mBuyOrderBook.put(price, size);
+                case Constants.SELL -> mSellOrderBook.put(price, size);
             }
         }
-        if ((buyOrderBook.size() >= Constants.displayLEVELS) && (sellOrderBook.size() >= Constants.displayLEVELS)) {
-            if (msgHandler!=null) {
-                final StringBuffer bOrderBook = new StringBuffer();
-                addOrderLine(buyOrderBook, Constants.headerBUY, bOrderBook, Constants.displayLEVELS);
+        if ((mBuyOrderBook.size() >= Constants.displayLEVELS) && (mSellOrderBook.size() >= Constants.displayLEVELS)) {
+            if (mMsgHandler != null) {
+                final var bOrderBook = new StringBuilder();
+                addOrderLine(mBuyOrderBook, Constants.headerBUY, bOrderBook, Constants.displayLEVELS);
                 bOrderBook.append("\n");
-                addOrderLine(sellOrderBook, Constants.headerSELL, bOrderBook, Constants.displayLEVELS);
+                addOrderLine(mSellOrderBook, Constants.headerSELL, bOrderBook, Constants.displayLEVELS);
                 final String orderBook = bOrderBook.toString();
                 try {
-                    msgHandler.updateOrderBook(orderBook);
+                    mMsgHandler.updateOrderBook(orderBook);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
             }
         }
     }
-    private static void addOrderBookItems(ListIterator<List<String>> listIterator,
-                                         Map<String, String> orderBook, int Limit) {
-        int nCount = 0;
-        for (; listIterator.hasNext(); ) {
-            if (nCount == Limit) {
-                break;
-            }
-            List<String> buyItem = listIterator.next();
-            final String price = buyItem.get(0);
-            final String size = buyItem.get(1);
-            orderBook.put(price, size);
-            nCount++;
-        }
-    }
 
     @Override
     public CompletionStage<?> onText(WebSocket webSocket, CharSequence data, boolean last) {
-        bufferedData.append(data);
+        mBufferedData.append(data);
         if (last) {
-            String json = bufferedData.toString();
-            ObjectMapper om = new ObjectMapper();
+            final String json = mBufferedData.toString();
+            final ObjectMapper om = new ObjectMapper();
             try {
                 final JsonNode jsonNode = om.readTree(json);
                 final String type = jsonNode.get("type").asText();
@@ -183,13 +216,10 @@ public class WebSocketClientHandler implements WebSocket.Listener {
                         TickerMessage tickerMsg = om.readValue(json, TickerMessage.class);
                         handle(tickerMsg);
                     }
-                    default -> {
-                        handleUnhandledType(type, json);
-                    }
+                    default -> handleUnhandledType(type, json);
                 }
-            } catch (JsonProcessingException e) {
+            } catch (JsonProcessingException | InterruptedException e) {
                 e.printStackTrace();
-            } catch (InterruptedException e) {
             }
 
             initBuffer();
